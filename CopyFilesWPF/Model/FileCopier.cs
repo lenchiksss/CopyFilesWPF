@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -12,6 +8,8 @@ namespace CopyFilesWPF.Model
 {
     public class FileCopier
     {
+        CancellationToken cancellationToken;
+
         private readonly Grid _gridPanel;
         private readonly FilePath _filePath;
 

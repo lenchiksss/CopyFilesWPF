@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows;
 using System.IO;
+using System;
 
 namespace CopyFilesWPF.Presenter
 {
@@ -83,22 +84,37 @@ namespace CopyFilesWPF.Presenter
             _mainWindowModel.CopyFile(ProgressChanged, ModelOnComplete, newPanel);
         }
 
-        // порефакторить этот метод, убрать хардкод, и переделать его по SOLID (тут несколько ответсвенностей)
         private void PauseCancelClick(object sender, RoutedEventArgs routedEventArgs)
         {
-            ((Button)sender).IsEnabled = false;
-            if (((Button)sender)!.Content.ToString()!.Equals("Cancel"))
+            Button clickedButton = (Button)sender;
+            FileCopier fileCopier = GetFileCopierFromButton(clickedButton);
+
+            if (clickedButton.Content is string buttonContent)
             {
-                ((((Button)sender).Tag as Grid)!.Tag as FileCopier)!.CancelFlag = true;
+                if (buttonContent.Equals("Cancel"))
+                {
+                    fileCopier.CancelFlag = true;
+                }
+
+                else if (buttonContent.Equals("Pause"))
+                {
+                    fileCopier.PauseFlag.Reset();
+                }
+
+                else
+                {
+                    fileCopier.PauseFlag.Set();
+                }
             }
-            else if (((Button)sender)!.Content.ToString()!.Equals("Pause"))
+        }
+
+        private FileCopier GetFileCopierFromButton(Button button)
+        {
+            if (button.Tag is Grid grid && grid.Tag is FileCopier fileCopier)
             {
-                ((((Button)sender).Tag as Grid)!.Tag as FileCopier)!.PauseFlag.Reset();
+                return fileCopier;
             }
-            else
-            {
-                ((((Button)sender).Tag as Grid)!.Tag as FileCopier)!.PauseFlag.Set();
-            }
+            throw new InvalidOperationException("Error");
         }
 
         private void ModelOnComplete(Grid panel)
@@ -113,31 +129,47 @@ namespace CopyFilesWPF.Presenter
             );
         }
 
-        // порефакторить этот метод, убрать хардкод, и переделать его по SOLID (тут несколько ответсвенностей)
-        private void ProgressChanged(double persentage, ref bool cancelFlag, Grid panel)
+        private void ProgressChanged(double percentage, ref bool cancelFlag, Grid panel)
         {
             _mainWindowView.MainWindowView.Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                 (ThreadStart)delegate ()
                 {
-                    foreach (var el in panel.Children)
-                    {
-                        if (el is ProgressBar bar)
-                        {
-                            bar.Value = persentage;
-                        }
-                        if (el is Button button1 && button1!.Content.ToString()!.Equals("Resume") && button1!.IsEnabled == false)
-                        {
-                            button1.Content = "Pause";
-                            button1.IsEnabled = true;
-                        }
-                        else if (el is Button button && button!.Content.ToString()!.Equals("Pause") && button.IsEnabled == false)
-                        {
-                            button.Content = "Resume";
-                            button.IsEnabled = true;
-                        }
-                    }
+                    UpdateProgressBar(panel, percentage);
+                    UpdateButtons(panel);
                 }
             );
+        }
+
+        private void UpdateProgressBar(Grid panel, double percentage)
+        {
+            foreach (var el in panel.Children)
+            {
+                if (el is ProgressBar bar)
+                {
+                    bar.Value = percentage;
+                }
+            }
+        }
+
+        private void UpdateButtons(Grid panel)
+        {
+            foreach (var el in panel.Children)
+            {
+                if (el is Button button)
+                {
+                    string buttonText = button.Content.ToString();
+                    if (buttonText.Equals("Resume") && !button.IsEnabled)
+                    {
+                        button.Content = "Pause";
+                        button.IsEnabled = true;
+                    }
+                    else if (buttonText.Equals("Pause") && !button.IsEnabled)
+                    {
+                        button.Content = "Resume";
+                        button.IsEnabled = true;
+                    }
+                }
+            }
         }
     }
 }
